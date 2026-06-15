@@ -1,0 +1,13 @@
+services:
+  api:
+    build:
+      context: .
+    image: cs-demo-coach-ai:latest
+    ports:
+      - "8000:8000"
+    environment:
+      PYTHONUNBUFFERED: "1"
+    volumes:
+      - ./data/uploads:/app/data/uploads
+      - ./data/features:/app/data/features
+      - ./models:/app/models:ro
