@@ -1,84 +1,104 @@
 # CS Demo Coach AI
 
-CS Demo Coach AI is a FastAPI and machine-learning portfolio project for analyzing real Counter-Strike 2 demo files. Upload a `.dem` file, choose a player, and receive a player-facing coaching report with round summaries, recurring mistakes, replay data when available, and a model-backed review result.
+Analyze real Counter-Strike 2 demos and receive player-friendly coaching reports, round reviews, replay visualization, and improvement suggestions.
 
-This project is intentionally built around real parser output. It does not use mock demo data or generated CS2 events. If Awpy cannot parse a demo or a feature is unavailable, the app returns a clear error or marks that feature as missing.
+Built with:
+- Python
+- FastAPI
+- scikit-learn
+- Awpy
+- Docker
+
+CS Demo Coach AI turns raw CS2 `.dem` files into practical coaching feedback. A player uploads a demo, selects their in-game name, and the app extracts real gameplay data to produce a match report, round-by-round review, replay view, and improvement plan.
+
+## What This Project Does
+
+- Upload a CS2 demo file
+- Select a player
+- Extract real gameplay data
+- Analyze rounds with machine learning
+- Review replay visualizations
+- Receive improvement suggestions
 
 ## Features
 
-- Upload and parse real Counter-Strike 2 `.dem` files with Awpy.
-- Extract player and round-level features from real event/tick data.
-- Generate a player-facing match report with grades, takeaways, round cards, and improvement advice.
-- Export model-ready CSV datasets from analyzed demos.
-- Train a scikit-learn `RandomForestClassifier` using generated feature CSVs.
-- Load `models/bad_round_model.pkl` with joblib for FastAPI inference.
-- Fall back to a transparent baseline score when the model artifact is missing.
-- Serve a plain HTML/CSS/JavaScript frontend with no React dependency.
-- Provide operational endpoints for health checks, model info, replay data, and diagnostics.
-- Run locally or in Docker.
+### Player Features
 
-## Architecture
+- Player-facing match report with an overall performance grade
+- Round cards with plain-English explanations
+- Replay viewer when demo tick data is available
+- Improvement plan based on recurring mistakes
+- Clean dark esports-style frontend
 
-```text
-                         +--------------------------+
-                         |  Browser UI              |
-                         |  HTML / CSS / JavaScript |
-                         +------------+-------------+
-                                      |
-                                      | .dem upload + player_name
-                                      v
-+------------------+      +----------+-----------+      +------------------+
-| FastAPI routes   | ---> | Awpy demo parser     | ---> | Feature builder  |
-| app/main.py      |      | app/parser.py        |      | app/features.py  |
-+--------+---------+      +----------+-----------+      +---------+--------+
-         |                           |                            |
-         |                           | real demo frames/events    |
-         |                           v                            v
-         |                +----------+-----------+      +---------+--------+
-         |                | Replay extraction    |      | Report builder   |
-         |                | app/replay.py        |      | app/report.py    |
-         |                +----------+-----------+      +---------+--------+
-         |                                                       |
-         |                                                       v
-         |                +----------------------+      +---------+--------+
-         +--------------> | Model inference      | ---> | JSON response    |
-                          | app/model_service.py |      | + frontend views |
-                          +----------+-----------+      +------------------+
-                                     |
-                                     v
-                          models/bad_round_model.pkl
-```
+### Machine Learning Features
 
-## Example Workflow
+- Feature extraction from real Awpy parser output
+- Model-ready CSV dataset export
+- Weak-label training pipeline for bad-round classification
+- scikit-learn `RandomForestClassifier`
+- joblib model loading for FastAPI inference
+- Baseline scoring fallback when no model artifact is available
 
-1. Start the FastAPI server.
-2. Open `http://127.0.0.1:8000/`.
-3. Upload a real CS2 `.dem` file.
-4. Enter the exact in-demo player name.
-5. Review the generated tabs:
-   - `Match Report`: overall grade, strengths, weaknesses, and takeaways.
-   - `Rounds`: filterable round cards with plain-English explanations.
-   - `Replay`: map playback when Awpy exposes usable tick coordinates.
-   - `Improve`: recurring issue summary and next-match focus plan.
-6. Optionally export features with `POST /extract-features`.
-7. Retrain the weak-label model with `python -m ml.train_model`.
+### Engineering Features
+
+- FastAPI backend with typed response schemas
+- Real-world `.dem` file ingestion
+- Clear error handling for parser failures and missing players
+- Docker and Docker Compose support
+- Operational endpoints for health checks and model metadata
+- Plain HTML/CSS/JavaScript frontend with no React dependency
+
+## How It Works
+
+1. Upload a demo
+2. Parse replay data using Awpy
+3. Extract player and round features
+4. Run machine learning analysis
+5. Generate a coaching report
+6. Display replay and round insights
+
+## Technical Highlights
+
+- End-to-end ML pipeline
+- Real-world file ingestion
+- Feature engineering from gameplay events
+- Model training and inference
+- FastAPI backend
+- Dockerized deployment
+- Replay visualization
+
+## Skills Demonstrated
+
+- Python
+- FastAPI
+- Machine Learning
+- Docker
+- Git
+- Data Processing
+- Feature Engineering
+- API Development
 
 ## Tech Stack
 
-- Python 3.11+
+Backend:
 - FastAPI
+- Uvicorn
+- python-multipart
+
+Data and ML:
 - Awpy
 - pandas
 - scikit-learn
 - joblib
-- python-multipart
-- uvicorn
-- Docker / Docker Compose
-- Plain HTML, CSS, and JavaScript frontend
+
+Frontend and Deployment:
+- HTML/CSS/JavaScript
+- Docker
+- Docker Compose
 
 ## Installation
 
-Create and activate a virtual environment, then install dependencies:
+Create a virtual environment and install dependencies:
 
 ```bash
 python -m venv .venv
@@ -100,13 +120,13 @@ pip install -r requirements.txt
 
 ## Local Development
 
-Run the API locally:
+Run the app:
 
 ```bash
 python -m uvicorn app.main:app --reload
 ```
 
-If Windows resolves `python` to the Microsoft Store alias or cannot find Python, use the included helper:
+On Windows, this helper is also available:
 
 ```bat
 run-local.cmd
@@ -118,23 +138,21 @@ Open:
 http://127.0.0.1:8000/
 ```
 
-Useful local endpoints:
+API docs:
 
 ```text
 http://127.0.0.1:8000/docs
-http://127.0.0.1:8000/health
-http://127.0.0.1:8000/model-info
 ```
 
 ## Docker Usage
 
-Build the image:
+Build:
 
 ```bash
 docker build -t cs-demo-coach-ai .
 ```
 
-Run the app:
+Run:
 
 ```bash
 docker run --rm -p 8000:8000 cs-demo-coach-ai
@@ -146,118 +164,56 @@ Or use Docker Compose:
 docker compose up --build
 ```
 
-Then open:
-
-```text
-http://127.0.0.1:8000/
-```
-
-The Docker image copies `app/`, `ml/`, `models/`, `data/`, and `static/`. Runtime uploads and generated feature CSVs should stay out of version control.
-
 ## API Endpoints
 
-### `GET /`
-
-Serves the player-facing frontend.
-
-### `GET /health`
-
-Returns service status:
-
-```json
-{
-  "status": "ok",
-  "service": "cs-demo-coach-ai"
-}
-```
-
-### `GET /model-info`
-
-Returns model metadata, including whether `models/bad_round_model.pkl` exists, model type, feature columns, and last modified timestamp.
-
-### `POST /analyze-demo`
-
-Accepts:
-
-- `file`: required `.dem` upload
-- `player_name`: required query parameter
-
-Returns a match report with round reports, extracted raw features, missing feature summary, model status, baseline risk score, and model prediction fields.
-
-### `POST /extract-features`
-
-Accepts the same inputs as `/analyze-demo`, then writes a CSV dataset under `data/features/`.
-
-CSV rows include:
-
-```text
-demo_id, player_name, round, kills, deaths, damage_dealt,
-flashes_thrown, smokes_thrown, molotovs_incendiaries_thrown,
-he_grenades_thrown, utility_count, survived_round, died_first,
-death_tick, death_time, side, team, opening_kill, opening_death,
-kills_before_death, damage_before_death, clutch_situation,
-survived_after_first_kill, utility_used_before_death, round_win,
-team_alive_when_player_died, enemies_alive_when_player_died, risk_score
-```
-
-### `POST /replay-data`
-
-Returns lightweight per-round replay data from real Awpy tick/event data when available.
-
-### `POST /diagnose-demo`
-
-Returns diagnostic information about map name, tick count, player position records, and sample position rows.
+- `GET /` - player-facing frontend
+- `GET /health` - service health check
+- `GET /model-info` - model artifact metadata
+- `POST /analyze-demo` - upload a `.dem` file and generate a player report
+- `POST /extract-features` - export extracted features to CSV
+- `POST /replay-data` - return replay data when tick coordinates are available
+- `POST /diagnose-demo` - inspect whether a demo exposes player position data
 
 ## Model Training
 
-The training script combines all CSV files under `data/features/`, creates a weak label called `bad_round`, audits for label leakage, trains a Random Forest model, prints metrics, and saves:
-
-```text
-models/bad_round_model.pkl
-```
-
-Run:
+Export feature CSVs through `/extract-features`, then train the model:
 
 ```bash
 python -m ml.train_model
 ```
 
-The current model uses weak labels derived from baseline risk and heuristics. Metrics are useful for development, but they are not equivalent to evaluation against human-labeled coaching data.
+The script combines CSV files from `data/features/`, creates weak labels, checks for label leakage, trains a Random Forest model, prints metrics and feature importances, and saves:
+
+```text
+models/bad_round_model.pkl
+```
 
 ## Screenshots
 
-Add screenshots before publishing the portfolio page:
+Screenshots make this project much easier to evaluate visually. Recommended captures:
 
 - Landing page
-- Match report summary
-- Round cards
+- Match report
+- Round review cards
 - Replay viewer
 - Improvement plan
 
-Suggested folder:
+## Notes
 
-```text
-docs/screenshots/
-```
+- The app uses real Awpy parser output, not mock events.
+- Feature availability depends on the demo file and Awpy output.
+- Replay visualization requires usable tick/position data.
+- Current model labels are weak labels generated from heuristics and baseline scoring.
 
-## Known Limitations
+## Next Steps
 
-- Awpy parser output can vary by demo and package version.
-- Some demos may not expose position/tick data required for replay playback.
-- Current labels are weak labels, not human coaching labels.
-- Uploaded demos are saved locally and are not expired automatically.
-- No authentication, database, async job queue, or cloud deployment is included yet.
-
-## Future Roadmap
-
-- Add human-labeled training data for stronger supervision.
-- Add job queue support for long demo parses.
-- Store analyses and upload metadata in Postgres.
-- Add user accounts and report history.
-- Add richer replay interactions and map calibration coverage.
-- Add CI, tests, and linting for public contributions.
-- Deploy with AWS infrastructure and managed storage.
+- AWS deployment
+- PostgreSQL integration
+- Analysis history
+- Background job processing
+- Monitoring and observability
+- CI/CD automation
 
 ## License
 
-This project is licensed under the MIT License. See [LICENSE](LICENSE).
+MIT License. See [LICENSE](LICENSE).
