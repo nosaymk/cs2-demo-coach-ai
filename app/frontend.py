@@ -888,7 +888,7 @@ INDEX_HTML = """
               <input id="player_name" name="player_name" type="text" placeholder="Exact in-demo player name" required>
             </label>
             <button id="submit" class="primary-action" type="submit">Analyze Demo</button>
-            <p class="helper-text">Your demo is analyzed locally by the server. Large demos may take 30-90 seconds.</p>
+            <p class="helper-text">Your demo is analyzed by the server. Large demos may take 1-3 minutes to parse.</p>
           </form>
         </aside>
       </section>
@@ -917,7 +917,7 @@ INDEX_HTML = """
         <div>
           <p class="eyebrow">Analysis Running</p>
           <h2>Building your coaching report</h2>
-          <p class="panel-copy">This can take up to a minute for large demos.</p>
+          <p class="panel-copy">Large demos may take 1-3 minutes to parse. Keep this tab open while the server works.</p>
         </div>
         <div class="loading-ring" aria-hidden="true"></div>
       </div>
@@ -1268,6 +1268,34 @@ INDEX_HTML = """
         </article>
       `;
       document.getElementById("try-again").addEventListener("click", resetToLanding);
+    }
+
+    async function readResponsePayload(response) {
+      const text = await response.text();
+      if (!text) return {};
+
+      const contentType = response.headers.get("content-type") || "";
+      if (contentType.includes("application/json")) {
+        try {
+          return JSON.parse(text);
+        } catch (error) {
+          return { detail: `Server returned invalid JSON: ${String(error)}`, raw_response: text };
+        }
+      }
+
+      try {
+        return JSON.parse(text);
+      } catch {
+        return { detail: text };
+      }
+    }
+
+    function errorMessageFromPayload(payload, fallback) {
+      if (typeof payload?.detail === "string") return payload.detail;
+      if (Array.isArray(payload?.detail)) return payload.detail.map((item) => item.msg || JSON.stringify(item)).join("; ");
+      if (typeof payload?.error === "string") return payload.error;
+      if (typeof payload?.message === "string") return payload.message;
+      return fallback;
     }
 
     function matchReportHtml(payload, rounds) {
@@ -2040,17 +2068,34 @@ INDEX_HTML = """
 
       const playerName = document.getElementById("player_name").value.trim();
       const analysisForm = new FormData(form);
+      const selectedFile = document.getElementById("file").files?.[0];
 
       try {
+        console.info("[CS Demo Coach AI] /analyze-demo request start", {
+          playerName,
+          fileName: selectedFile?.name || null,
+          fileSizeBytes: selectedFile?.size || null,
+        });
         const response = await fetch(`/analyze-demo?player_name=${encodeURIComponent(playerName)}`, {
           method: "POST",
           body: analysisForm
         });
-        const payload = await response.json();
+        const payload = await readResponsePayload(response);
         if (!response.ok) {
-          showError(payload.detail || "Analysis failed.");
+          const message = errorMessageFromPayload(payload, `Analysis failed with HTTP ${response.status}.`);
+          console.error("[CS Demo Coach AI] /analyze-demo request failure", {
+            status: response.status,
+            statusText: response.statusText,
+            payload,
+          });
+          showError(message);
           return;
         }
+        console.info("[CS Demo Coach AI] /analyze-demo request success", {
+          status: response.status,
+          roundsAnalyzed: payload.rounds_analyzed,
+          player: payload.player,
+        });
         setLoadingStage(4);
         const modelInfo = await loadModelInfo();
         stopLoading();
@@ -2058,7 +2103,10 @@ INDEX_HTML = """
         renderReport(payload, modelInfo);
         await loadReplayData(playerName);
       } catch (error) {
-        showError(String(error));
+        console.error("[CS Demo Coach AI] /analyze-demo request failure", error);
+        showError(
+          `${String(error)}. If this happened during an AWS upload, the demo may still be parsing or the connection may have been interrupted. Large demos may take 1-3 minutes.`
+        );
       } finally {
         button.disabled = false;
       }
